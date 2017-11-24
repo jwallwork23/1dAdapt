@@ -16,17 +16,16 @@ def intervalAdapt(mesh, f, tolCoarsen, tolRefine):
 
     x1 = mesh.coordinates.dat.data      # Get mesh coordinates
     d = x1[-1] - x1[0]                  # Get length of interval
-    # x1.append(x1[0])                    # Append coordinate list for periodic boundary
     x2 = []                             # List for new coordinate set
     fData = f.dat.data
-    # fData.append(fData[0])              # Append function value list for periodic boundary
 
     for i in range(len(x1)-1):
-        fAverage = 0.5 * (fData[i+1] + fData[i])    # Get average function value over cell
-        if (i == 0) | (fData[i] > tolCoarsen):
+        if (i == 0):
+            x2.append(x1[i])
+        elif (fData[i-1] > tolCoarsen) | (fData[i] > tolCoarsen) | (fData[i+1] > tolCoarsen):
             x2.append(x1[i])                        # Add in any nodes to be kept (implicitly deleting otherwise)
-        if fAverage > tolRefine:
-            x2.append(0.5 * (x1[i+1] + x1[i+1]))    # Add in any extra nodes for refinement
+        if (fData[i] > tolRefine) & (fData[i+1] > tolRefine):
+            x2.append(0.5 * (x1[i] + x1[i+1]))    # Add in any extra nodes for refinement
     x2.append(x1[-1])
         
     mesh2 = IntervalMesh(len(x2)-1, d)              # Establish a new mesh object
@@ -55,13 +54,16 @@ def interpolateVariable(mesh, f):
 
 
 if __name__ == '__main__':
-    mesh = IntervalMesh(8, 1)
-    X = SpatialCoordinate(mesh)
-    f = Function(FunctionSpace(mesh, 'CG', 1)).interpolate(X**2)
-    plt.plot(mesh.coordinates.dat.data, f.dat.data)
-    plt.show()
+    mesh = IntervalMesh(8, np.pi)
+    X, = SpatialCoordinate(mesh)
+    f = Function(FunctionSpace(mesh, 'CG', 1)).interpolate(sin(X))
+    pre_adapt_mesh = mesh.coordinates.dat.data
+    plt.plot(pre_adapt_mesh, f.dat.data)
+    plt.plot(pre_adapt_mesh, np.zeros(len(pre_adapt_mesh)), 'o')
 
     mesh2 = intervalAdapt(mesh, f, 0.1, 0.5)
     f2 = interpolateVariable(mesh2, f)
-    plt.plot(mesh2.coordinates.dat.data, f2.dat.data)
+    post_adapt_mesh = mesh2.coordinates.dat.data
+    plt.plot(post_adapt_mesh, f2.dat.data)
+    plt.plot(post_adapt_mesh, np.zeros(len(post_adapt_mesh)) - 0.02, 'x')
     plt.show()
